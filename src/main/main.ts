@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { GoogleAuthManager } from './auth/GoogleAuthManager';
+import { SettingsManager } from './settings/SettingsManager';
 
 // メインウィンドウの参照をグローバルに保持
 let mainWindow: BrowserWindow | null = null;
@@ -88,6 +89,48 @@ ipcMain.handle('auth:logout', async () => {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'ログアウトに失敗しました'
+    };
+  }
+});
+
+// 設定関連のIPC通信ハンドラー
+ipcMain.handle('settings:get-api-key', async () => {
+  try {
+    const settingsManager = SettingsManager.getInstance();
+    const apiKey = settingsManager.getApiKey();
+    return { success: true, apiKey };
+  } catch (error) {
+    console.error('APIキー取得エラー:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'APIキーの取得に失敗しました'
+    };
+  }
+});
+
+ipcMain.handle('settings:test-api-key', async (_, apiKey: string) => {
+  try {
+    const settingsManager = SettingsManager.getInstance();
+    return await settingsManager.testApiKey(apiKey);
+  } catch (error) {
+    console.error('APIキーテストエラー:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'APIキーのテストに失敗しました'
+    };
+  }
+});
+
+ipcMain.handle('settings:save-api-key', async (_, apiKey: string) => {
+  try {
+    const settingsManager = SettingsManager.getInstance();
+    settingsManager.setApiKey(apiKey);
+    return { success: true };
+  } catch (error) {
+    console.error('APIキー保存エラー:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'APIキーの保存に失敗しました'
     };
   }
 });
