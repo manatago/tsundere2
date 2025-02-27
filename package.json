@@ -68,6 +68,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "electron-store": "^8.1.0",
     "googleapis": "^129.0.0",
     "openai": "^4.85.4",

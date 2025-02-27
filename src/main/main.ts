@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { GoogleAuthManager } from './auth/GoogleAuthManager';
 import { SettingsManager } from './settings/SettingsManager';
+import { CalendarManager } from './calendar/CalendarManager';
+import { MessageGenerator } from './message/MessageGenerator';
+import { format, addDays } from 'date-fns';
 
 // メインウィンドウの参照をグローバルに保持
 let mainWindow: BrowserWindow | null = null;
@@ -50,6 +53,7 @@ app.on('activate', () => {
 });
 
 // IPC通信のハンドラー設定
+// 認証関連
 ipcMain.handle('auth:google', async () => {
   try {
     const authManager = GoogleAuthManager.getInstance();
@@ -93,7 +97,7 @@ ipcMain.handle('auth:logout', async () => {
   }
 });
 
-// 設定関連のIPC通信ハンドラー
+// 設定関連
 ipcMain.handle('settings:get-api-key', async () => {
   try {
     const settingsManager = SettingsManager.getInstance();
@@ -135,7 +139,44 @@ ipcMain.handle('settings:save-api-key', async (_, apiKey: string) => {
   }
 });
 
-ipcMain.handle('calendar:get-events', async (_, date: string) => {
-  // カレンダーイベント取得の実装（後で追加）
-  return [];
+// カレンダー関連
+ipcMain.handle('calendar:get-events', async (_, type: 'yesterday' | 'today' | 'tomorrow') => {
+  try {
+    const calendarManager = CalendarManager.getInstance();
+    const messageGenerator = MessageGenerator.getInstance();
+    const date = new Date();
+
+    let targetDate: Date;
+    let messageType: 'past' | 'present' | 'future';
+
+    switch (type) {
+      case 'yesterday':
+        targetDate = addDays(date, -1);
+        messageType = 'past';
+        break;
+      case 'tomorrow':
+        targetDate = addDays(date, 1);
+        messageType = 'future';
+        break;
+      default:
+        targetDate = date;
+        messageType = 'present';
+    }
+
+    const events = await calendarManager.getEvents(targetDate);
+    const message = await messageGenerator.getMessage(events, targetDate, messageType);
+
+    return {
+      success: true,
+      events,
+      message,
+      date: format(targetDate, 'yyyy-MM-dd')
+    };
+  } catch (error) {
+    console.error('カレンダーイベント取得エラー:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'イベントの取得に失敗しました'
+    };
+  }
 });
